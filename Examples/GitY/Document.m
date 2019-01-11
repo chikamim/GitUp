@@ -20,7 +20,7 @@
 #define kToolbarItem_LeftView @"left"
 #define kToolbarItem_RightView @"right"
 
-@interface Document () <NSToolbarDelegate, NSTableViewDelegate, GCLiveRepositoryDelegate, GIDiffContentsViewControllerDelegate>
+@interface Document () <NSToolbarDelegate, NSTableViewDelegate, GCLiveRepositoryDelegate, GIDiffContentsViewControllerDelegate, GICommitViewControllerDelegate>
 @property(nonatomic, strong) IBOutlet NSArrayController* arrayController;
 @property(nonatomic, strong) IBOutlet NSView* leftToolbarView;
 @property(nonatomic, strong) IBOutlet NSView* rightToolbarView;
@@ -79,18 +79,24 @@
     NSArray *args = [argv subarrayWithRange:NSMakeRange(1, argv.count - 1)];
     NSLog(@"git:args:%@", args);
     NSString *message = @"";
+    Boolean stageAll = NO;
     for (NSString *arg in args) {
         if ([arg hasPrefix:@"--message="]) {
             message = [arg substringWithRange:NSMakeRange(10, arg.length-10)];
         }
+        if ([arg isEqualToString:@"--stage-all"]) {
+            stageAll = YES;
+        }
     }
     
-   NSLog(@"git:message:%@", message);
-    
-  _commitViewController = [[GIAdvancedCommitViewController alloc] initWithRepository:_repository];
-    [_commitViewController stageAllFiles];
+    _commitViewController = [[GIAdvancedCommitViewController alloc] initWithRepository:_repository];
+    if (stageAll) {
+        [_commitViewController stageAllFiles];
+    }
     _commitViewController.messageTextView.string = message;
     [_commitViewController.messageTextView moveToEndOfLine:nil];
+    
+    _commitViewController.delegate = self;
   [[_tabView tabViewItemAtIndex:0] setView:_commitViewController.view];
 
 
@@ -100,6 +106,13 @@
 // Override -updateChangeCount: which is trigged by NSUndoManager to do nothing and not mark document as updated
 - (void)updateChangeCount:(NSDocumentChangeType)change {
   ;
+}
+
+
+#pragma mark - GICommitViewControllerDelegate
+
+- (void)commitViewController:(GICommitViewController*)controller didCreateCommit:(GCCommit*)commit {
+    [NSApp terminate:self];
 }
 
 #pragma mark - GCLiveRepositoryDelegate
